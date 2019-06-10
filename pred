@@ -28,13 +28,13 @@ from common.ch_inner_prod import ChInnerProd, ChInnerProdMerge
 APS = 100;
 PS = 100;
 
-basepath='/home/tom/Desktop/u24_lymphocyte-master/prediction'
-TileFolder = '/home/tom/Desktop/u24_lymphocyte-master/prediction/lymphocyte/data/small_lym_cnn_train_data';
+basepath='/home/mip/lymphocyte'
+TileFolder = os.path.join(basepath,'test_pt','sm_tiles');
 LearningRate = theano.shared(np.array(5e-3, dtype=np.float32));
 BatchSize = 96;
 
-CNNModel = '/home/tom/Desktop/u24_lymphocyte-master/prediction/lymphocyte/model/cnn_lym_model.pkl';
-heat_map_out = '/home/tom/Desktop/u24_lymphocyte-master/prediction/lymphocyte/heat_map';
+CNNModel = os.path.join(basepath,'trained_models','cnn_lym_model.pkl');
+heat_map_out = os.path.join(basepath,'test_pt','heatmap');
 
 mu = 0.6151888371;
 sigma = 0.2506813109;
@@ -69,7 +69,7 @@ def load_data(todo_list, rind):
     lind = 0;
     cind = 0;
 
-    print(todo_list)
+    #print(todo_list)
 
 
     for fn in todo_list:
@@ -81,14 +81,14 @@ def load_data(todo_list, rind):
         if len(fn.split('_')) < 4:
             print('problem2')
             continue;
-
-        x_off = float(fn.split('_')[3]);
-        y_off = float(fn.split('_')[4]);
-        svs_pw = 100;
-        png_pw = 100;
+        # fn
+        x_off = float(fn.split('_')[0]);
+        y_off = float(fn.split('_')[1]);
+        svs_pw = float(fn.split('_')[2]);
+        png_pw = float(fn.split('_')[3].split('.png')[0]);
 
         png = np.array(Image.open(full_fn).convert('RGB'));
-
+        #need a box# counter within x and y (should range 1-9) maybe cind?
         for x in range(0, png.shape[1], APS):
             if x + APS > png.shape[1]:
                 continue;
@@ -156,6 +156,7 @@ def val_fn_epoch_on_disk(classn, val_fn):
     n1 = 0;
     n2 = 0;
     n3 = 0;
+    count=0;
     todo_list = os.listdir(TileFolder);
 
     while len(todo_list) > 0:
@@ -167,6 +168,10 @@ def val_fn_epoch_on_disk(classn, val_fn):
         augs = get_aug_feas(inputs);
         targets = np.zeros((inputs.shape[0], classn), dtype=np.int32);
 
+        print('predicting for patch number {} of {}'.format(count,len(todo_list)));
+        count+=1;
+
+        #predict
         output = multi_win_during_val(val_fn, inputs, augs, targets);
         all_or[n1:n1+len(output)] = output;
         all_inds[n2:n2+len(inds)] = inds;
@@ -310,9 +315,12 @@ def split_validation(classn):
     Or_all[inds] = Or[:, 0];
     print(Or_all)
 
-    fid = open(os.path.join(heat_map_out,'small_lympocyte.txt'), 'w');
+    fid = open(os.path.join(heat_map_out,'test_lympocyte.txt'), 'w');
     for idx in range(0, Or_all.shape[0]):
         fid.write('{} {} {}\n'.format(coor[idx][0], coor[idx][1], Or_all[idx]));
+        
+        
+        #filename box #pred (pred proba)
     fid.close();
 
     return;
