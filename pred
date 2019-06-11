@@ -25,20 +25,30 @@ from common.shape import ReshapeLayer
 from common.batch_norms import batch_norm, SoftThresPerc
 from common.ch_inner_prod import ChInnerProd, ChInnerProdMerge
 
+######to set up, change CNNModel and head_map_out directories####
+
 APS = 100;
 PS = 100;
 
-basepath='/home/mip/lymphocyte'
-TileFolder = os.path.join(basepath,'test_pt','sm_tiles');
+parser = argparse.ArgumentParser()
+parser.add_argument('--image_dir')  # image directory in ImageFolder format
+parser.add_argument('--outfile')  # where you want model saved
+args = parser.parse_args()
+
+
+TileFolder = args.image_dir
 LearningRate = theano.shared(np.array(5e-3, dtype=np.float32));
 BatchSize = 96;
 
-CNNModel = os.path.join(basepath,'trained_models','cnn_lym_model.pkl');
-heat_map_out = os.path.join(basepath,'test_pt','heatmap');
+CNNModel = '/home/tom/Desktop/u24_lymphocyte-master/prediction/lymphocyte/model/cnn_lym_model.pkl';
+heat_map_out = '/home/tom/Desktop/u24_lymphocyte-master/prediction/lymphocyte/heat_map';
 
 mu = 0.6151888371;
 sigma = 0.2506813109;
 aug_fea_n = 1;
+
+svs_pw_glob = 300;  # power of SVS file
+png_pw_glob = 300;  # power of png file
 
 
 def whiteness(png):
@@ -69,8 +79,7 @@ def load_data(todo_list, rind):
     lind = 0;
     cind = 0;
 
-    #print(todo_list)
-
+    print(todo_list)
 
     for fn in todo_list:
         lind += 1;
@@ -81,14 +90,14 @@ def load_data(todo_list, rind):
         if len(fn.split('_')) < 4:
             print('problem2')
             continue;
-        # fn
-        x_off = float(fn.split('_')[0]);
-        y_off = float(fn.split('_')[1]);
-        svs_pw = float(fn.split('_')[2]);
-        png_pw = float(fn.split('_')[3].split('.png')[0]);
+
+        x_off = float(fn.split('_')[2].split('-')[1]);
+        y_off = float(fn.split('_')[2].split('-')[2]);
+        svs_pw = svs_pw_glob; #can change this up top
+        png_pw = png_pw_glob; #power of png file
 
         png = np.array(Image.open(full_fn).convert('RGB'));
-        #need a box# counter within x and y (should range 1-9) maybe cind?
+
         for x in range(0, png.shape[1], APS):
             if x + APS > png.shape[1]:
                 continue;
@@ -136,6 +145,8 @@ def multi_win_during_val(val_fn, inputs, augs, targets):
                         aug, tar);
                 output_pat[ncase:ncase+len(outp)] = outp;
                 ncase += len(outp);
+
+
             # Break batch into mini-batches
             ########################
 
@@ -156,11 +167,10 @@ def val_fn_epoch_on_disk(classn, val_fn):
     n1 = 0;
     n2 = 0;
     n3 = 0;
-    count=0;
     todo_list = os.listdir(TileFolder);
 
     while len(todo_list) > 0:
-        todo_list, inputs, inds, coor, rind = load_data(todo_list, rind);
+        todo_list, inputs, inds, coor, rind  = load_data(todo_list, rind);
         if len(inputs) == 0:
             all_coor[n3:n3+len(coor)] = coor;
             n3 += len(coor);
@@ -168,10 +178,6 @@ def val_fn_epoch_on_disk(classn, val_fn):
         augs = get_aug_feas(inputs);
         targets = np.zeros((inputs.shape[0], classn), dtype=np.int32);
 
-        print('predicting for patch number {} of {}'.format(count,len(todo_list)));
-        count+=1;
-
-        #predict
         output = multi_win_during_val(val_fn, inputs, augs, targets);
         all_or[n1:n1+len(output)] = output;
         all_inds[n2:n2+len(inds)] = inds;
@@ -183,7 +189,8 @@ def val_fn_epoch_on_disk(classn, val_fn):
     all_or = all_or[:n1];
     all_inds = all_inds[:n2];
     all_coor = all_coor[:n3];
-    return all_or, all_inds, all_coor;
+
+    return all_or, all_inds, all_coor, todo_list;
 
 
 def confusion_matrix(Or, Tr, thres):
@@ -309,21 +316,36 @@ def split_validation(classn):
     layers.set_all_param_values(network, pickle.load(open(CNNModel, 'rb')));
 
     # Testing
-    Or, inds, coor = val_fn_epoch_on_disk(classn, val_fn);
-    print(Or)
+    Or, inds, coor,todo_list = val_fn_epoch_on_disk(classn, val_fn);
     Or_all = np.zeros(shape=(coor.shape[0],), dtype=np.float32);
     Or_all[inds] = Or[:, 0];
-    print(Or_all)
 
-    fid = open(os.path.join(heat_map_out,'test_lympocyte.txt'), 'w');
-    for idx in range(0, Or_all.shape[0]):
-        fid.write('{} {} {}\n'.format(coor[idx][0], coor[idx][1], Or_all[idx]));
-        
-        
-        #filename box #pred (pred proba)
+
+
+    filenames=os.listdir(os.path.join(TileFolder))
+    n_img=(png_pw_glob/PS)**2
+
+
+    fid = open(os.path.join(heat_map_out,args.outfile+'.txt'), 'w')
+    filename_index=0
+    for name in filenames:
+        print(name)
+        name_image=range(filename_index*n_img,((filename_index*n_img)+n_img))
+        for i in name_image:
+            x_coord=coor[i][0]
+            y_coord = coor[i][1]
+            pred=Or_all[i]
+            if filename_index==0:
+                im_index=i
+            else:
+                im_index=i%(n_img*filename_index)
+            fid.write('{} {} {} {} {}\n'.format(name, x_coord, y_coord, im_index, pred))
+        filename_index += 1
     fid.close();
 
+
     return;
+
 
 
 def main():
