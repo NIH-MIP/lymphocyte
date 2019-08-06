@@ -19,22 +19,14 @@ for hei = 1:numel(dirlist)
     imgsize = ceil(bigSize./100);
     
     list_TIL = [];
-    TIL_pos = [];
     TILlist = dir([predDir filesep 'Pred_' fileid '*']);
     for listi = 1:numel(TILlist)
-        disp(int2str(listi))
         TIL = readtable([TILlist(listi).folder filesep TILlist(listi).name],'Delimiter',' ');
         TIL = table2cell(TIL);
-        highrisk = TIL(find(cell2mat(TIL(:,5))>0.5),:);
-        highrisk(:,6) = {TILlist(listi).name};
         if(numel(TIL)>0)
             list_TIL = cat(1,list_TIL,TIL); 
         end
-        if(numel(highrisk)>0)
-            TIL_pos = cat(1,TIL_pos,highrisk);
-        end
     end
-    disp(num2str(numel(find(cell2mat(list_TIL(:,5))>0.5))))
     TILmap = zeros(imgsize);
     for TILi = 1:size(list_TIL,1)
         filei = strsplit(list_TIL{TILi,1},'_');
