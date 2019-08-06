@@ -1,10 +1,10 @@
 %dependencies: bfmatlab
 
-dirlist = dir('S:\bladder_NIH\Apolo\HE_slides\**\*.czi');
+dirlist = dir('\path\to\HE_slides\**\*.czi');
 refratio = 8;
 imgSize = 5000;
 patchSize = 100;
-saveDir = 'V:\NIH_BLCA_TIL\patches';
+saveDir = '\path\to\save\patches';
     
 for hei = 11:numel(dirlist) 
     filename = [dirlist(hei).folder filesep dirlist(hei).name];
