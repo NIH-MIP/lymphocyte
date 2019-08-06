@@ -1,12 +1,12 @@
 %dependencies: bfmatlab
 
 
-dirlist = dir('S:\bladder_NIH\Apolo\HE_slides\**\*.czi');
-predDir = 'V:\NIH_BLCA_TIL\pred_dump';
-mapDir = 'V:\NIH_BLCA_TIL\maps';
+dirlist = dir('\path\to\HE_slides\**\*.czi');
+predDir = '\path\to\predictions';
+mapDir = '\path\to\save\maps';
 refratio = 8;
 
-for hei = 1:1%numel(dirlist) 
+for hei = 1:numel(dirlist) 
     filename = [dirlist(hei).folder filesep dirlist(hei).name];
     fileid = strrep(dirlist(hei).name,'.czi','');
     disp(['processing: ' fileid])
@@ -86,18 +86,3 @@ end
 
 
 
-%% interesting spots
-
-% ind = 12692;
-% filei = strsplit(list_TIL{ind ,1},'_');
-% xi = str2num(filei{7});
-% yi = str2num(strrep(filei{8},'.jpeg',''));
-% 
-% 
-% caseData.setSeries(0);
-% I1 = bfGetPlane(caseData,1,yi-1000,xi-1000,2100,2100);
-% I2 = bfGetPlane(caseData,2,yi-1000,xi-1000,2100,2100);
-% I3 = bfGetPlane(caseData,3,yi-1000,xi-1000,2100,2100);
-% batch_img(:,:,1) = I1;
-% batch_img(:,:,2) = I2;
-% batch_img(:,:,3) = I3;
